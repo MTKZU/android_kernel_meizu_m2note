@@ -773,6 +773,6 @@
 	status = "okay";
 };
 /* LCM GPIO Kernal Standardization end */
-#include <k53v1_64_bsp/cust.dtsi>
+#include <m2note/cust.dtsi>
 /*End of this file, DO NOT ADD ANYTHING HERE*/
 
