@@ -24,6 +24,7 @@
 #include <linux/i2c.h>
 #include <linux/sched.h>
 #include <linux/kthread.h>
+#include <linux/rtpm_prio.h>
 #include <linux/wait.h>
 #include <linux/time.h>
 #include <linux/delay.h>
@@ -31,7 +32,7 @@
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
 #include <linux/proc_fs.h>	/*proc */
-#include "include/tpd_gt9xx_common.h"
+#include "tpd_gt9xx_common.h"
 #pragma pack(1)
 struct st_cmd_head {
 	u8 wr;			/* write read flag0:R  1:W  2:PID 3: */
@@ -440,26 +441,18 @@ static s32 goodix_tool_write(struct file *filp, const char __user *buff, unsigne
 		return cmd_head.data_len + CMD_HEAD_LENGTH;
 	} else if (7 == cmd_head.wr) {
 		/* mt_eint_mask(CUST_EINT_TOUCH_PANEL_NUM); */
-		if (true == tpdIrqIsEnabled) {
-			disable_irq(touch_irq);
-			tpdIrqIsEnabled = false;
-		}
-
+		disable_irq(touch_irq);
 #if defined(CONFIG_GTP_ESD_PROTECT)
 		gtp_esd_switch(i2c_client_point, SWITCH_OFF);
 #endif
 		return CMD_HEAD_LENGTH;
 	} else if (9 == cmd_head.wr) {
-#ifdef CONFIG_GTP_USE_GPIO_BUT_NOT_PINCTRL
-		gtp_irq_enable();
-#else
+		/* mt_eint_unmask(CUST_EINT_TOUCH_PANEL_NUM); */
 		enable_irq(touch_irq);
-#endif
-
 #if defined(CONFIG_GTP_ESD_PROTECT)
-			gtp_esd_switch(i2c_client_point, SWITCH_ON);
+		gtp_esd_switch(i2c_client_point, SWITCH_ON);
 #endif
-			return CMD_HEAD_LENGTH;
+		return CMD_HEAD_LENGTH;
 	} else if (17 == cmd_head.wr) {
 		ret =
 		    copy_from_user(&cmd_head.data[GTP_ADDR_LENGTH], &buff[CMD_HEAD_LENGTH],
@@ -487,13 +480,6 @@ static s32 goodix_tool_write(struct file *filp, const char __user *buff, unsigne
 	} else if (15 == cmd_head.wr) {
 		show_len = 0;
 		total_len = 0;
-		if ((cmd_head.data == NULL)
-			|| (cmd_head.data_len >= DATA_LENGTH)
-			|| (cmd_head.data_len >= (len - CMD_HEAD_LENGTH))) {
-			GTP_ERROR("copy_from_user data out of range.");
-			return -EINVAL;
-		}
-
 		memset(cmd_head.data, 0, cmd_head.data_len + 1);
 		ret = copy_from_user(cmd_head.data, &buff[CMD_HEAD_LENGTH], cmd_head.data_len);
 		if (ret)
@@ -503,6 +489,7 @@ static s32 goodix_tool_write(struct file *filp, const char __user *buff, unsigne
 			return FAIL;
 	}
 #endif
+#if defined(CONFIG_GTP_COMPATIBLE_MODE)
 	else if (19 == cmd_head.wr)	{
 		ret = copy_from_user(&cmd_head.data[0], &buff[CMD_HEAD_LENGTH], cmd_head.data_len);
 		if (0 == cmd_head.data[0]) {
@@ -519,6 +506,7 @@ static s32 goodix_tool_write(struct file *filp, const char __user *buff, unsigne
 				return FAIL;
 		}
 	}
+#endif
 #if defined(CONFIG_HOTKNOT_BLOCK_RW)
 	else if (21 == cmd_head.wr) {
 		u16 wait_hotknot_timeout = 0;

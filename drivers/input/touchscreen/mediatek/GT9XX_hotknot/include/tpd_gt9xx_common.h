@@ -1,18 +1,3 @@
-/* 2010 - 2014 Goodix Technology.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be a reference
- * to you, when you are integrating the GOODiX's CTP IC into your system,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- */
-
 #ifndef TPD_CUSTOM_GT9XX_H__
 #define TPD_CUSTOM_GT9XX_H__
 
@@ -39,19 +24,25 @@
 #endif
 #include <linux/interrupt.h>
 #include <linux/time.h>
+#include <linux/rtpm_prio.h>
 
 #include <linux/proc_fs.h>
 #include <linux/uaccess.h>
 #include <linux/jiffies.h>
+#include "gt9xx_config.h" //sanford.lin
 
 /* Pre-defined definition */
 
-#define TPD_KEY_COUNT   4
+#ifdef TPD_HAVE_BUTTON
+#define TPD_KEY_COUNT   3
+#define key_1           200,1950              //auto define  
+#define key_2           540,1950
+#define key_3           900,1950
 
-#define TPD_KEYS        {KEY_BACK, KEY_HOME, KEY_MENU, KEY_SEARCH}
-#define TPD_KEYS_DIM    {{60, 850, 50, 30}, {180, 850, 50, 30}, {300, 850, 50, 30}, {420, 850, 50, 30} }
-#define GTP_KEY_MAP_ARRAY         {{60, 850}, {180, 850}, {300, 850},}
-
+#define TPD_KEYS        	{KEY_MENU, KEY_HOMEPAGE, KEY_BACK}
+#define TPD_KEYS_DIM    	{{key_1,50,30},{key_2,50,30},{key_3,50,30}}
+#define GTP_KEY_MAP_ARRAY 	{{key_1}, {key_2}, {key_3}}
+#endif
 /*
 struct goodix_ts_data
 {
@@ -99,15 +90,47 @@ extern u8 got_hotknot_extra_state;
 extern u8 hotknot_paired_flag;
 extern wait_queue_head_t bp_waiter;
 extern s32 gup_load_hotknot_system(void);
-#ifdef CONFIG_GTP_USE_GPIO_BUT_NOT_PINCTRL
-extern int tpd_irq_registration(void);
-extern void gtp_eint_gpio_output(unsigned int gpio_number, int level);
-extern int gtp_irq_enable(void);
-#endif
 
 extern unsigned char gtp_default_FW[];
 extern unsigned char gtp_default_FW_fl[];
+
 /* ***************************PART1:ON/OFF define******************************* */
+/*
+#define GTP_CUSTOM_CFG        0
+#define GTP_DRIVER_SEND_CFG   1       //driver send config to TP on intilization (for no config built in TP flash)
+#define GTP_HAVE_TOUCH_KEY    0
+#define GTP_POWER_CTRL_SLEEP  1       //turn off power on suspend
+#define GTP_AUTO_UPDATE       1       //update FW to TP FLASH
+#define GTP_CHANGE_X2Y        0				//set for se1
+#define GTP_HEADER_FW_UPDATE  1
+#define GTP_AUTO_UPDATE_CFG   0       // auto update config by .cfg file, function together with GTP_AUTO_UPDATE
+
+#define GTP_SUPPORT_I2C_DMA   0       // if gt9xxf, better enable it if hardware platform supported
+#define GTP_COMPATIBLE_MODE   1       // compatible with GT9XXF
+
+#define GTP_CREATE_WR_NODE    1
+#define GTP_ESD_PROTECT       0       // esd protection with a cycle of 2 seconds
+#define GUP_USE_HEADER_FILE   0
+#define GTP_FW_DOWNLOAD       0       //update FW to TP SRAM
+//#define GTP_CHARGER_DETECT
+
+#define GTP_CONFIG_MIN_LENGTH       186
+#define GTP_CONFIG_MAX_LENGTH       240
+#define GTP_CHARGER_SWITCH    0       // charger plugin & plugout detect
+#define GTP_WITH_PEN          0
+#define GTP_SLIDE_WAKEUP      0
+#define GTP_DBL_CLK_WAKEUP    0       // double-click wakup, function together with GTP_SLIDE_WAKEUP
+#define HOTKNOT_BLOCK_RW      0
+
+//#define TPD_PROXIMITY
+//#define TPD_HAVE_BUTTON               //report key as coordinate,Vibration feedback
+//#define TPD_WARP_X
+//#define TPD_WARP_Y
+
+#define GTP_DEBUG_ON          0
+#define GTP_DEBUG_ARRAY_ON    0
+#define GTP_DEBUG_FUNC_ON     0
+*/
 #define CFG_GROUP_LEN(p_cfg_grp)  (sizeof(p_cfg_grp) / sizeof(p_cfg_grp[0]))
 #define FLASHLESS_FLASH_WORKROUND  0
 
@@ -116,6 +139,36 @@ extern unsigned char gtp_default_FW_fl[];
 #define GTP_RST_PORT    GPIO_CTP_RST_PIN
 #define GTP_INT_PORT    GPIO_CTP_EINT_PIN
 */
+/*
+#define GTP_GPIO_AS_INPUT(pin)          do{\
+					    if(pin == GPIO_CTP_EINT_PIN)\
+						mt_set_gpio_mode(pin, GPIO_CTP_EINT_PIN_M_GPIO);\
+					    else\
+						mt_set_gpio_mode(pin, GPIO_CTP_RST_PIN_M_GPIO);\
+					    mt_set_gpio_dir(pin, GPIO_DIR_IN);\
+					    mt_set_gpio_pull_enable(pin, GPIO_PULL_DISABLE);\
+					}while(0)
+#define GTP_GPIO_AS_INT(pin)            do{\
+					    mt_set_gpio_mode(pin, GPIO_CTP_EINT_PIN_M_EINT);\
+					    mt_set_gpio_dir(pin, GPIO_DIR_IN);\
+					    mt_set_gpio_pull_enable(pin, GPIO_PULL_DISABLE);\
+					}while(0)
+#define GTP_GPIO_GET_VALUE(pin)         mt_get_gpio_in(pin)
+#define GTP_GPIO_OUTPUT(pin,level)      do{\
+					    if(pin == GPIO_CTP_EINT_PIN)\
+						mt_set_gpio_mode(pin, GPIO_CTP_EINT_PIN_M_GPIO);\
+					    else\
+						mt_set_gpio_mode(pin, GPIO_CTP_RST_PIN_M_GPIO);\
+					    mt_set_gpio_dir(pin, GPIO_DIR_OUT);\
+					    mt_set_gpio_out(pin, level);\
+					}while(0)
+#define GTP_GPIO_REQUEST(pin, label)    gpio_request(pin, label)
+#define GTP_GPIO_FREE(pin)              gpio_free(pin)
+#define GTP_IRQ_TAB	{IRQ_TYPE_EDGE_RISING, \
+					IRQ_TYPE_EDGE_FALLING, \
+					IRQ_TYPE_LEVEL_LOW, \
+					IRQ_TYPE_LEVEL_HIGH}
+*/
 
 /* STEP_3(optional):Custom set some config by themself,if need. */
 #if defined(CONFIG_GTP_CUSTOM_CFG)
@@ -123,7 +176,7 @@ extern unsigned char gtp_default_FW_fl[];
 #else
 #define GTP_INT_TRIGGER  1
 #endif
-#define GTP_MAX_TOUCH      5
+#define GTP_MAX_TOUCH    5
 
 #define TPD_POWER_SOURCE_CUSTOM	MT6328_POWER_LDO_VGP1	/* MT6323_POWER_LDO_VGP1 */
 #define VELOCITY_CUSTOM
@@ -131,7 +184,7 @@ extern unsigned char gtp_default_FW_fl[];
 #define TPD_VELOCITY_CUSTOM_Y 15
 
 /* STEP_4(optional):If this project have touch key,Set touch key config. */
-#define GTP_KEY_TAB	 {KEY_MENU, KEY_HOME, KEY_BACK, KEY_SEND}
+#define GTP_KEY_TAB	 {KEY_BACK, KEY_HOMEPAGE, KEY_MENU}
 
 /* ***************************PART3:OTHER define********************************* */
 #define GTP_DRIVER_VERSION          "V2.1<2014/01/10>"
@@ -235,16 +288,16 @@ enum CHIP_TYPE_T {
 #endif
 
 /* Log define */
-#if 0
+#if 1
 #define GTP_INFO(fmt, arg...)           pr_err("<<-GTP-INFO->> "fmt"\n", ##arg)
 #else
 #define GTP_INFO(fmt, arg...)
 #endif
 
 #define GTP_ERROR(fmt, arg...)          pr_err("<<-GTP-ERROR->> "fmt"\n", ##arg)
+
 #if 0
-#define GTP_DEBUG(fmt, arg...) \
-	pr_err("<<-GTP-DEBUG->> [%d]"fmt"\n", __LINE__, ##arg)
+#define GTP_DEBUG(fmt, arg...)          pr_err("<<-GTP-DEBUG->> [%d]"fmt"\n", __LINE__, ##arg)
 #else
 #define GTP_DEBUG(fmt, arg...)
 #endif
@@ -330,21 +383,11 @@ void gtp_esd_switch(struct i2c_client *client, s32 on);
 void force_reset_guitar(void);
 #endif
 
-
 #if (defined(CONFIG_GTP_ESD_PROTECT) || defined(CONFIG_GTP_COMPATIBLE_MODE))
 extern u8 is_resetting;
 #endif
 
-#ifdef CONFIG_GTP_USE_GPIO_BUT_NOT_PINCTRL
-extern unsigned int tpd_rst_gpio_number;
-extern unsigned int tpd_int_gpio_number;
-#endif
 extern int touch_irq;
-#ifdef CONFIG_GTP_USE_GPIO_BUT_NOT_PINCTRL
-extern int tpdGPIOTiedtoIRQ;
-#endif
-extern bool tpdIrqIsEnabled;
-
 extern struct i2c_client *i2c_client_point;
 #if defined(CONFIG_GTP_ESD_PROTECT)
 extern void gtp_esd_switch(struct i2c_client *client, s32 on);
